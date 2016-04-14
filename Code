@@ -1,6 +1,4 @@
 package org.usfirst.frc.team3826.robot;
-import com.kauailabs.navx.frc.AHRS;
-
 import edu.wpi.first.wpilibj.CANTalon;
 import edu.wpi.first.wpilibj.CameraServer;
 import edu.wpi.first.wpilibj.DigitalInput;
@@ -10,7 +8,6 @@ import edu.wpi.first.wpilibj.Jaguar;
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.Relay;//Spike
 import edu.wpi.first.wpilibj.RobotDrive;
-import edu.wpi.first.wpilibj.SPI;//NavX
 import edu.wpi.first.wpilibj.Servo;
 import edu.wpi.first.wpilibj.Talon;
 import edu.wpi.first.wpilibj.Timer;
@@ -28,38 +25,27 @@ public class Robot extends IterativeRobot {
 	//For CAN, the Talon for the roller has an ID of 1,
 	//whereas the Talon for theshooter has and ID of 0
 	
-	Talon portArm;
+	Talon portArm;//Defining motor controllers and servos
 	Servo rightServo;
 	Servo leftServo;
 	CANTalon roller;
 	CANTalon shooter;
-	RobotDrive ourRobot;
-	Joystick lJoy; //Left stick
-	Joystick rJoy; //Right stick
-	Joystick xBox; //XBox Controller
-	Joystick saitek;
 	Jaguar winch, scaler;
-	double rollerSpeed, shooterSpeed;
-	Encoder winchEncoder;
+	RobotDrive ourRobot;
+	Joystick xBox;//Joysticks
+	Joystick saitek;
+	Encoder winchEncoder;//Encoders
 	Encoder shooterEncoder;
 	Encoder leftWheel, rightWheel;
 	DigitalInput shooterSwitch;
-	boolean alligned = false;
-	double horizontal = -26500;
+	double horizontal = -26500;//Winch set positions
 	double shooting = -5750;
 	double starting = 0;
-	double maxHeight = 2000;
-	
 	double minHeight = -30000;
-	double moatAuto = -11500;
 	double rockAuto = -20000;
-	double defenseHeight = 11700;
-	double servoValue = 0;
-	int autoCount;
-	CameraServer camera;
-	AHRS ahrs;
-	Relay spike;
-	double yawSetpoint = -90,yawReturn;
+	double defenseHeight = rockAuto;
+	CameraServer camera;//Camera named camera
+	Relay spike;//Relay named SPike
 	
     /**
      * This function is run when the robot is first started up and should be
@@ -67,44 +53,37 @@ public class Robot extends IterativeRobot {
      */
     
     public void robotInit() {
-    	ourRobot = new RobotDrive(0,1);
-    	//lJoy = new Joystick(0);
-    	//rJoy = new Joystick(1);
-    	xBox = new Joystick(0);
-    	saitek = new Joystick(2);
-    	winch = new Jaguar(2);
-    	roller = new CANTalon(1);
-    	shooter = new CANTalon(0);
-    	winchEncoder = new Encoder(4, 5, false);
-    	winchEncoder.reset();
-    	shooterSwitch = new DigitalInput(6);
-    	leftWheel = new Encoder(0,1);
-    	rightWheel = new Encoder(2,3);
-    	rightWheel.setReverseDirection(true);
-    	leftWheel.reset();
+    	ourRobot = new RobotDrive(0,1);//Drive Train PWM ports are 0 and 1
+    	xBox = new Joystick(0);//Xbox controller has an ID of 0 on the driver station
+    	saitek = new Joystick(2);//The saitek has an ID of 2
+    	winch = new Jaguar(2);//The winch's jaguar is plugged into PWM port 2
+    	roller = new CANTalon(1);//The roller's Talon SRX has a common ID of 1
+    	shooter = new CANTalon(0);//The shooter's Talon SRX has a common ID of 0
+    	winchEncoder = new Encoder(4, 5, false);//The winch's encoder plugs into DIO ports 4 and 5
+    	winchEncoder.reset();//Resets the encoder
+    	shooterSwitch = new DigitalInput(6);//The photoswitch is plugged into DIO port 6
+    	leftWheel = new Encoder(0,1);//The left side of the drive train has its encoder plugged into DIO ports 0 and 1
+    	rightWheel = new Encoder(2,3);//The right side of the drive train has its encoder plugged into DIO ports 2 and 3
+    	rightWheel.setReverseDirection(true);//Sets the right wheels' encoder to reverse
+    	leftWheel.reset();//Resets both drive train encoders
     	rightWheel.reset();
-    	scaler = new Jaguar(3);
-    	camera = CameraServer.getInstance();
+    	scaler = new Jaguar(3);//The scaler's jaguar is plugged into PWM port 3
+    	camera = CameraServer.getInstance();//Sets the camera with name: "cam2"
     	camera.setQuality(50);
     	camera.startAutomaticCapture("cam2");
-    	ahrs = new AHRS(SPI.Port.kMXP);
-    	spike = new Relay(0);
-    	ahrs.reset();
-    	leftServo = new Servo(4);
+    	spike = new Relay(0);//The spike is plugged into relay port 0
+    	leftServo = new Servo(4);//THe two servos are plugged into PWN ports 4 and 5
     	rightServo = new Servo(5);
-    	portArm = new Talon(6);
-    	spike.set(Relay.Value.kForward);
+    	portArm = new Talon(6);//The portcullis arm's talon is plugged into PWM port 6
+    	spike.set(Relay.Value.kForward);//Sets the spike to on in the positive direction
     }
     
-    /**a
+    /**
      * This function is run once each time the robot enters autonomous mode
      */
     public void autonomousInit() {
-    	leftWheel.reset();
+    	leftWheel.reset();//Reset drive train encoders
     	rightWheel.reset();
-    	ahrs.reset();
-    	autoCount = 0;
-    	yawReturn = 0;
     }
 
     /**
@@ -112,147 +91,11 @@ public class Robot extends IterativeRobot {
      */
 	public void autonomousPeriodic() {
 			
-		
-		//Low Bar
-		/*      //<- Put start comment there
-		if(winchEncoder.get() <= horizontal -100 && winchEncoder.get() > horizontal -400){
-			winch.set(-.35);
-		}
-		else if(winchEncoder.get() <= horizontal -400){
-			winch.set(-.5);
-		}	
-		else if(winchEncoder.get() >= horizontal +400){
-			winch.set(.75);
-		}
-		else if(winchEncoder.get() >= horizontal +100 && winchEncoder.get()  < horizontal +400){
-			winch.set(.35);
-		}
-		else if(winchEncoder.get() > horizontal -100 && winchEncoder.get() < horizontal +100){
-			winch.set(0);
-			
-		if(leftWheel.get() > -2250 || rightWheel.get() < 2250){
-			ourRobot.arcadeDrive(.7,0);
-		}
-		else{
-			ourRobot.arcadeDrive(0,0);
-		}
-		}*/     //<- And end comment there
-		
-		/*
-		//Autonomous with the NavX Board
-		if((leftWheel.get() > -500 || rightWheel.get() < 500) && autoCount == 0){
-			ourRobot.arcadeDrive(.6125,0);
-		}
-		else if(autoCount == 0){
-			autoCount = 1;
-		}
-	
-		if(autoCount == 1){
-			
-		if(ahrs.getYaw() <= yawSetpoint -2.5 && ahrs.getYaw() > yawSetpoint -5){
-			ourRobot.arcadeDrive(0,-.45);
-		}
-		else if(ahrs.getYaw() <= yawSetpoint -5){
-			ourRobot.arcadeDrive(0,-.6);
-		}	
-		else if(ahrs.getYaw() >= yawSetpoint +5){
-			ourRobot.arcadeDrive(0,.6);
-		}
-		else if(ahrs.getYaw() >= yawSetpoint +2.5 && ahrs.getYaw()  < yawSetpoint +5){
-			ourRobot.arcadeDrive(0,.45);
-		}
-		else if(ahrs.getYaw() > yawSetpoint +10){
-			ourRobot.arcadeDrive(0,.7);
-		}
-		else if(ahrs.getYaw() < yawSetpoint -10){
-			ourRobot.arcadeDrive(0,-.7);
-		}
-		else if(ahrs.getYaw() > yawSetpoint -2.5 && ahrs.getYaw() < yawSetpoint +2.5){
-			autoCount = 2;
-		}
-		}
-		
-		if(autoCount == 2){
-			ourRobot.arcadeDrive(0,0);
-			autoCount = 3;
-		}
-		
-		if(autoCount == 3){
-			if(ahrs.getYaw() <= 90 -2.5 && ahrs.getYaw() > 90 -5){
-				ourRobot.arcadeDrive(0,-.45);
-			}
-			else if(ahrs.getYaw() <= 90 -5){
-				ourRobot.arcadeDrive(0,-.6);
-			}	
-			else if(ahrs.getYaw() >= 90 +5){
-				ourRobot.arcadeDrive(0,.6);
-			}
-			else if(ahrs.getYaw() >= 90 +2.5 && ahrs.getYaw()  < 90 +5){
-				ourRobot.arcadeDrive(0,.45);
-			}
-			else if(ahrs.getYaw() > 90 +10){
-				ourRobot.arcadeDrive(0,.7);
-			}
-			else if(ahrs.getYaw() < 90 -10){
-				ourRobot.arcadeDrive(0,-.7);
-			}
-			else if(ahrs.getYaw() > 90 -2.5 && ahrs.getYaw() < 90 +2.5){
-				autoCount = 4;
-			}
-		}
-		
-		if(autoCount == 4){
-			if(ahrs.getYaw() <= 0 -2.5 && ahrs.getYaw() > 0 -5){
-				ourRobot.arcadeDrive(0,-.45);
-			}
-			else if(ahrs.getYaw() <= 0 -5){
-				ourRobot.arcadeDrive(0,-.6);
-			}	
-			else if(ahrs.getYaw() >= 0 +5){
-				ourRobot.arcadeDrive(0,.6);
-			}
-			else if(ahrs.getYaw() >= 0 +2.5 && ahrs.getYaw()  < 0 +5){
-				ourRobot.arcadeDrive(0,.45);
-			}
-			else if(ahrs.getYaw() > 0 +10){
-				ourRobot.arcadeDrive(0,.7);
-			}
-			else if(ahrs.getYaw() < 0 -10){
-				ourRobot.arcadeDrive(0,-.7);
-			}
-			else if(ahrs.getYaw() > 0 -2.5 && ahrs.getYaw() < 0 +2.5){
-				autoCount = 5;
-			}
-		}
-		
-		if(autoCount == 5){
-			if(leftWheel.get()<-350 || rightWheel.get() > 350){
-				ourRobot.arcadeDrive(-.55,0);
-			}
-			else if(leftWheel.get() < 0|| rightWheel.get() > 0){
-				ourRobot.arcadeDrive(-.4,0);
-			}
-			else{
-				autoCount = 6;
-			}
-		}
-
-		if(autoCount == 6){
-			ourRobot.arcadeDrive(0,0);
-		}
-		*/
-		
-		SmartDashboard.putNumber("Return Value",yawReturn);
-		SmartDashboard.putNumber("AutoCount",autoCount);
-        SmartDashboard.putNumber(   "Yaw",              ahrs.getYaw());
-        SmartDashboard.putNumber(   "TotalYaw",         ahrs.getAngle());
+		//In the smartdashboard, print the values of the drive train encoders
     	SmartDashboard.putNumber("Left wheel is: ",leftWheel.get());
     	SmartDashboard.putNumber("Right wheel is: ",rightWheel.get());
-		
-
-		
-		//Rockwall, Rough Terrain, Ramparts, Moat
-		         //<- Put start comment there
+    	
+		//Autonomous for the Rockwall, Rough Terrain, Ramparts, and Moat
 		if(winchEncoder.get() <= rockAuto -100 && winchEncoder.get() > rockAuto-400){
 			winch.set(-.35);
 		}
@@ -274,10 +117,14 @@ public class Robot extends IterativeRobot {
 		else{
 			ourRobot.arcadeDrive(0,0);
 		}
-		}       //<- And end comment there
-				
-		System.out.println("leftWheel is: " + leftWheel.get());
-		System.out.println("rightWheel is: " + rightWheel.get());
+		}
+		
+		/* To do:
+		 * Autonomous selection
+		 * Portcullis autonomous
+		 * Low bar autonomous
+		 * Autonomous shooting? (Vision processing first)
+		 */
     }
     	
     
@@ -285,7 +132,7 @@ public class Robot extends IterativeRobot {
      * This function is called once each time the robot enters teleoperated mode
      */
     public void teleopInit(){
-    	leftWheel.reset();
+    	leftWheel.reset();//Resets drive train encoders
 		rightWheel.reset();    	
     }
 
@@ -296,78 +143,106 @@ public class Robot extends IterativeRobot {
      * @see edu.wpi.first.wpilibj.IterativeRobot#teleopPeriodic()
      */
     public void teleopPeriodic() {
-    	leftServo.get();
-    	rightServo.get();
+
+    	//Driving
+    	if(xBox.getRawButton(8)){//If the start button is pressed
+    		ourRobot.arcadeDrive(-.6125,0);//Move the bot backwards
+    		shooter.set(0);//Stop the shooter
+    	}
+    	else if(xBox.getRawButton(7)){//If the select/back button is pressed
+    		ourRobot.arcadeDrive(.65,0);//Move the bot forwards
+    		shooter.set(0);//Stop the shooter
+    	}
+    	else if(xBox.getRawAxis(2) > .1){//If the left trigger is pressed
+			shooter.set(-1);//Start spinning the shooter
+			ourRobot.arcadeDrive(-.61,-1*xBox.getRawAxis(0));//Move the bot backwards but also allow it to turn
+		}
+    	else if(Math.abs(xBox.getRawAxis(1)) > .1 || Math.abs(xBox.getRawAxis(0)) > 0.05){//If none of these buttons are pressed
+    		ourRobot.arcadeDrive(-1*xBox.getRawAxis(1),-1.3*xBox.getRawAxis(0));//Control the bot with the left stick
+    		shooter.set(0);//Stop the shooter
+    	}
+    	else{//If no buttons are pressed and the left stick is not being moved
+    		ourRobot.arcadeDrive(0,0);//Stop the bot
+    		shooter.set(0);//Stop the shooter
+    	}
     	
-    	if(saitek.getRawButton(4)){
+    	//Shooting procedure and roller speed
+    	if(shooterSwitch.get()){//If shooter photositch is detecting the ball
+    		if(shooter.getEncVelocity() > 25000 && xBox.getRawAxis(3) > .1){//If the right trigger is pressed and the shooter is spinning at/past target speed
+    			roller.set(-1);//Spin the roller to push the ball into the shooter
+    		}
+    		else if(xBox.getRawAxis(2) > .1 && xBox.getRawAxis(3) < .1){//If either the trigger is not pressed or the shooter is not spinning fast enough
+    			roller.set(.45);//The roller moves the boulder away from the shooter slowly
+    		}
+    		else if(xBox.getRawButton(2)){//If the right trigger is not pressed but the B button is pressed
+    			roller.set(1);//Spin the roller outward (low goal/eject)
+    		}
+    		else{//Otherwise stop the roller
+    			roller.set(0);
+    		}
+    	}
+    	else{//If shooter photositch is not detecting the ball
+    		if(xBox.getRawAxis(3)>.1){//If the right trigger is pressed
+    			roller.set(-1);//Spin the roller inward
+    		}
+    		else if(xBox.getRawButton(2)){//If the right trigger is not pressed but the B button is pressed
+    			roller.set(1);//Spin the roller outward (low goal/eject)
+    		}
+    		else if(xBox.getRawAxis(3) > .1 && xBox.getRawAxis(2) > .1 && shooter.getEncVelocity()>25000){//If ready to shoot
+    			roller.set(-1);//Move roller inward
+    		}
+    		else if(xBox.getRawAxis(2) > .1){//If neither the right trigger nor B button are pressed but the left trigger is
+    			roller.set(0);//Stop spinning roller
+    		}
+    		else{//Otherwise stop the roller
+    			roller.set(0);
+    		}
+    	}
+    	
+    	//Scaling
+    	//Scaler release
+    	if(saitek.getRawButton(4)){//When saitek button 4 is pressed, set servos to 1 and 0
     		leftServo.set(1);
     		rightServo.set(0);
-    	}
-    	else{
+    		}
+    	else{//Otherwise, set them to 0 and 1
     		leftServo.set(0);
     		rightServo.set(1);
     	}
-    	
-
-    	SmartDashboard.putNumber("Left Servo",leftServo.get());
-    	SmartDashboard.putNumber("Right Servo",rightServo.get());
-		System.out.println("leftWheel is: " + leftWheel.get());
-		System.out.println("rightWheel is: " + rightWheel.get());
-    	
-    	//Winch
-    	System.out.println("Winch sits at: " + winchEncoder.get());
-    	
-    	
-    	if(xBox.getRawButton(5)){
-    		winchEncoder.reset();
-    		leftWheel.reset();
-    		rightWheel.reset();
-    		ahrs.reset();
-    	}
-    	
-    	SmartDashboard.putNumber("Winch",winchEncoder.get());
-    	
-    	
-    	//Portcullis arm
-    	if(saitek.getRawButton(3)){
-    		portArm.set(-1*saitek.getRawAxis(1));
-    	}
-    	else{
-    		portArm.set(0);
-    	}
-    	
-
-    	//Scaler direction 1 (spooling)
-    	if(saitek.getRawButton(1)){
+    	//Scaling winch
+    	if(saitek.getRawButton(1)){//Spins the motor in the direction to spool the winch
     		scaler.set(1);
     	}
-    	//Scaler direction 2 (scaling)
-    	else if(saitek.getRawButton(2)){
+    	else if(saitek.getRawButton(2)){//Spins the motor in the direction to scale
     		scaler.set(-1);
     	}
-    	else{
+    	else{//If neither are pressed, stop the motor
     		scaler.set(0);
     	}
-    	
-    	
-    	if(Math.abs(xBox.getRawAxis(5)) > .1 /*&& winchEncoder.get() <= (maxHeight)*/ && winchEncoder.get() >= (minHeight)){
-    		winch.set(xBox.getRawAxis(5));
+
+    	//Portcullis arm
+    	if(saitek.getRawButton(3)){//If saitek button 3 is pressed
+    		portArm.set(-1*saitek.getRawAxis(1));//The portcullis arm is control by saitek axis 1
+    	}
+    	else{//Otherwise stop it
+    		portArm.set(0);
     	}
     
-    	
-    	else if(xBox.getRawAxis(5) > .1){
-    	    	winch.set(xBox.getRawAxis(5));
+    	//Winch
+    	//Standard control
+    	if(Math.abs(xBox.getRawAxis(5)) > .1 && winchEncoder.get() >= minHeight){//If right stick is outside dead zone and the encoder is above its minimum value
+    		winch.set(xBox.getRawAxis(5));//Set the winch to the value of the right stick
     	}
-    	else if(xBox.getRawAxis(5) < -.1 && winchEncoder.get() < (minHeight)){
-    	    	winch.set(xBox.getRawAxis(5));
+    	else if(xBox.getRawAxis(5) > .1 && winchEncoder.get() < minHeight){//If the encoder value is less than the minimum height
+    	    	winch.set(xBox.getRawAxis(5));//Only move the winch if the intended direction is up
     	}
-    	
-    	
-    	else{
+    	else{//Otherwise stop the winch
     		winch.set(0);
     	}
-    	    	
-    	
+    	//Winch setpositions/setpoints
+    		//Main premise: if the encoder value is greater than 400 counts away from set position,
+    		//move the winch quickly, if it is between 400 and 100 away, slow it down,
+    		//if it is within 100 counts, stop the winch
     	//Y button sets to starting position
     	if (xBox.getRawButton(4)){
     		if(winchEncoder.get() <= starting -100 && winchEncoder.get() > starting -400){
@@ -382,11 +257,8 @@ public class Robot extends IterativeRobot {
     		if(winchEncoder.get() >= starting +100 && winchEncoder.get() < starting +400){
     			winch.set(.35);
     		}
-
     	}
-    	
-    	
-    	//xBox right bumper
+    	//Right bumper sets to defense height (same as Autonomous height)
     	if (xBox.getRawButton(6)){
     		if(winchEncoder.get() <= defenseHeight -100 && winchEncoder.get() > defenseHeight -400){
     			winch.set(-.35);
@@ -400,10 +272,7 @@ public class Robot extends IterativeRobot {
     		if(winchEncoder.get() >= defenseHeight +100 && winchEncoder.get() < defenseHeight +400){
     			winch.set(.35);
     		}
-
     	}
-    	
-    	
        	//X button sets to shooting position
     	if (xBox.getRawButton(3)){
     		if(winchEncoder.get() <= shooting -100 && winchEncoder.get() > shooting -400){
@@ -418,9 +287,7 @@ public class Robot extends IterativeRobot {
     		if(winchEncoder.get() >= shooting +100 && winchEncoder.get()  < shooting +400){
     			winch.set(.35);
     		}
-
     	}
-    	
        	//A button sets to horizontal position
     	if (xBox.getRawButton(1)){
     		if(winchEncoder.get() <= horizontal-100 && winchEncoder.get() > horizontal-400){
@@ -435,112 +302,21 @@ public class Robot extends IterativeRobot {
     		if(winchEncoder.get() >= horizontal+100 && winchEncoder.get() < horizontal+400){
     			winch.set(.35);
     		}
+    	}
+    	
+    	//Calibration/Zeroing
+    	if(xBox.getRawButton(5)){//Left bumper resets encoder values
+    		winchEncoder.reset();
+    		leftWheel.reset();
+    		rightWheel.reset();
+    	}
 
-    	}
-    	
-    	//Winch Encoder Values
-    	/*
-    	 * Encoder Points:
-    	 * 
-    	 * Horizontal:
-    	 * -26725
-    	 * 
-    	 * Starting Position:
-    	 * 0
-    	 * 
-    	 *  
-    	 * Shooting Position:
-    	 * -10400
-    	 * 
-    	 * Scaling Position:
-    	 * 
-    	 * 
-    	 * Transport Position:
-    	 * 0
-    	 * 
-    	 * Min:
-    	 * -27500
-    	 * 
-    	 * Max:
-    	 * 1700
-    	 * 
-    	 * 
-    	 */
-    	
-
-    	
-    	
-    	//Driving
-    	if(xBox.getRawButton(8)){
-    		ourRobot.arcadeDrive(-.6125,0);
-    		shooter.set(0);
-    	}
-    	
-    	else if(xBox.getRawButton(7)){
-    		ourRobot.arcadeDrive(.65,0);
-    		shooter.set(0);
-    	}
-    	
-    	else if(xBox.getRawAxis(2) > .1){
-			shooter.set(-1);
-			ourRobot.arcadeDrive(-.61,-1*xBox.getRawAxis(0));
-		}
-    	else if(Math.abs(xBox.getRawAxis(1)) > .1 || Math.abs(xBox.getRawAxis(0)) > 0.05){
-    		ourRobot.arcadeDrive(-1*xBox.getRawAxis(1),-1.3*xBox.getRawAxis(0));//Test Value
-    		shooter.set(0);
-    	}
-    	else{
-    		ourRobot.arcadeDrive(0,0);
-    		shooter.set(0);
-    	}
-    	
-    	//Shooting and Roller
-    	System.out.println("Shooter spins at: " + shooter.getEncVelocity());
-    	//RT = xboxAxis3
-    	//B = xboxButton2
-    	//LT = xboxAxis2
-    	
-    	
-    	if(shooterSwitch.get()){//If shooter photositch is detecting the ball
-    		if(shooter.getEncVelocity() > 25000 && xBox.getRawAxis(3) > .1){//If the right trigger is pressed and the shooter is spinning at/past target speed
-    			roller.set(-1);//Spin the roller to push the ball into the shooter
-    		}
-    		else if(xBox.getRawAxis(2) > .1 && xBox.getRawAxis(3) < .1){//If either the trigger is not pressed or the shooter is not spinning fast enough
-    			roller.set(.45);//The roller moves the boulder away from the shooter slowly
-    		}
-    		else if(xBox.getRawButton(2)){//If the right trigger is not pressed but the B button is pressed
-    			roller.set(1);//Spin the roller outward
-    		}
-    		else{
-    			roller.set(0);
-    		}
-    	}
-    	
-    	else{//If shooter photositch is not detecting the ball
-    		if(xBox.getRawAxis(3)>.1){//If the right trigger is pressed
-    			roller.set(-1);//Spin the roller inward
-    		}
-    		else if(xBox.getRawButton(2)){//If the right trigger is not pressed but the B button is pressed
-    			roller.set(1);//Spin the roller outward
-    		}
-    		else if(xBox.getRawAxis(3) > .1 && xBox.getRawAxis(2) > .1 && shooter.getEncVelocity()>25000){//If ready to shoot
-    			roller.set(-1);//Move roller inward
-    		}
-    		else if(xBox.getRawAxis(2) > .1){//If neither the right trigger nor B button are pressed
-    			roller.set(0);//Stop spinning roller
-    		}
-    		else{
-    			roller.set(0);
-    		}
-    	}
-    	
+    	//Printing values to the smart dashboard
+    	SmartDashboard.putNumber("Winch",winchEncoder.get());
     	SmartDashboard.putNumber("ShooterSpeed",shooter.getEncVelocity());
-    	
-    	//NavX Code
-        SmartDashboard.putNumber(   "Yaw",              ahrs.getYaw());
-        SmartDashboard.putNumber(   "TotalYaw",         ahrs.getAngle());
     	SmartDashboard.putNumber("Left wheel is: ",leftWheel.get());
     	SmartDashboard.putNumber("Right wheel is: ",rightWheel.get());
+    	
     	Timer.delay(.04);// wait 40ms to avoid hogging CPU cycles
     	
     }
