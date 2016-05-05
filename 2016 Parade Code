@@ -1,0 +1,301 @@
+package org.usfirst.frc.team3826.robot;
+import edu.wpi.first.wpilibj.CANTalon;
+import edu.wpi.first.wpilibj.DigitalInput;
+import edu.wpi.first.wpilibj.Encoder;
+import edu.wpi.first.wpilibj.IterativeRobot;
+import edu.wpi.first.wpilibj.Jaguar;
+import edu.wpi.first.wpilibj.Joystick;
+import edu.wpi.first.wpilibj.Relay;//Spike
+import edu.wpi.first.wpilibj.RobotDrive;
+import edu.wpi.first.wpilibj.Talon;
+import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+//PARADE CODE
+/**
+ * The VM is configured to automatically run this class, and to call the
+ * functions corresponding to each mode, as described in the IterativeRobot
+ * documentation. If you change the name of this class or the package after
+ * creating this project, you must also update the manifest file in the resource
+ * directory.
+ */
+public class Robot extends IterativeRobot {
+	
+	//For CAN, the Talon for the roller has an ID of 1,
+	//whereas the Talon for theshooter has and ID of 0
+	
+	Talon portArm;//Defining motor controllers
+	CANTalon roller;
+	CANTalon shooter;
+	Jaguar winch;
+	RobotDrive ourRobot;
+	Joystick xBox;//Joysticks
+	Joystick saitek;
+	Encoder winchEncoder;//Encoders
+	Encoder shooterEncoder;
+	Encoder leftWheel, rightWheel;
+	DigitalInput shooterSwitch;
+	double horizontal = -26500;//Winch set positions
+	double shooting = -5750;
+	double starting = 0;
+	double minHeight = -30000;
+	double rockAuto = -20000;
+	double defenseHeight = rockAuto;
+	Relay spike;//Relay named Spike
+	
+    /**
+     * This function is run when the robot is first started up and should be
+     * used for any initialization code.
+     */
+    
+    public void robotInit() {
+    	ourRobot = new RobotDrive(0,1);//Drive Train PWM ports are 0 and 1
+    	xBox = new Joystick(0);//Xbox controller has an ID of 0 on the driver station
+    	saitek = new Joystick(2);//The saitek has an ID of 2
+    	winch = new Jaguar(2);//The winch's jaguar is plugged into PWM port 2
+    	roller = new CANTalon(1);//The roller's Talon SRX has a common ID of 1
+    	shooter = new CANTalon(0);//The shooter's Talon SRX has a common ID of 0
+    	winchEncoder = new Encoder(4, 5, false);//The winch's encoder plugs into DIO ports 4 and 5
+    	winchEncoder.reset();//Resets the encoder
+    	shooterSwitch = new DigitalInput(6);//The photoswitch is plugged into DIO port 6
+    	leftWheel = new Encoder(0,1);//The left side of the drive train has its encoder plugged into DIO ports 0 and 1
+    	rightWheel = new Encoder(2,3);//The right side of the drive train has its encoder plugged into DIO ports 2 and 3
+    	rightWheel.setReverseDirection(true);//Sets the right wheels' encoder to reverse
+    	leftWheel.reset();//Resets both drive train encoders
+    	rightWheel.reset();
+    	spike = new Relay(0);//The spike is plugged into relay port 0
+    	portArm = new Talon(6);//The portcullis arm's talon is plugged into PWM port 6
+    	spike.set(Relay.Value.kForward);//Sets the spike to on in the positive direction
+    }
+    
+    /**
+     * This function is run once each time the robot enters autonomous mode
+     */
+    public void autonomousInit() {
+    	leftWheel.reset();//Reset drive train encoders
+    	rightWheel.reset();
+    }
+
+    /**
+     * This function is called periodically during autonomous
+     */
+	public void autonomousPeriodic() {
+			
+		//In the smartdashboard, print the values of the drive train encoders
+    	SmartDashboard.putNumber("Left wheel is: ",leftWheel.get());
+    	SmartDashboard.putNumber("Right wheel is: ",rightWheel.get());
+    	
+		//Autonomous for the Rockwall, Rough Terrain, Ramparts, and Moat
+		if(winchEncoder.get() <= rockAuto -100 && winchEncoder.get() > rockAuto-400){
+			winch.set(-.35);
+		}
+		else if(winchEncoder.get() <= rockAuto -400){
+			winch.set(-.5);
+		}	
+		else if(winchEncoder.get() >= rockAuto +400){
+			winch.set(.8);
+		}
+		else if(winchEncoder.get() >= rockAuto +100 && winchEncoder.get()  < rockAuto +400){
+			winch.set(.35);
+		}
+		else if(winchEncoder.get() > rockAuto -100 && winchEncoder.get() < rockAuto +100){
+			winch.set(0);
+			
+		if(leftWheel.get() > -1750 || rightWheel.get() < 1750){
+			ourRobot.arcadeDrive(.65,0);
+		}
+		else{
+			ourRobot.arcadeDrive(0,0);
+		}
+		}
+		
+		/* To do:
+		 * Autonomous selection
+		 * Portcullis autonomous
+		 * Low bar autonomous
+		 * Autonomous shooting? (Vision processing first)
+		 */
+    }
+    	
+    
+    /**
+     * This function is called once each time the robot enters teleoperated mode
+     */
+    public void teleopInit(){
+    	leftWheel.reset();//Resets drive train encoders
+		rightWheel.reset();    	
+    }
+
+    /**
+     * This function is called periodically during operator control
+     */
+    /* (non-Javadoc)
+     * @see edu.wpi.first.wpilibj.IterativeRobot#teleopPeriodic()
+     */
+    public void teleopPeriodic() {
+
+    	//Driving
+    	if(xBox.getRawButton(8)){//If the start button is pressed
+    		ourRobot.arcadeDrive(-.6125,0);//Move the bot backwards
+    		shooter.set(0);//Stop the shooter
+    	}
+    	else if(xBox.getRawButton(7)){//If the select/back button is pressed
+    		ourRobot.arcadeDrive(.65,0);//Move the bot forwards
+    		shooter.set(0);//Stop the shooter
+    	}
+    	else if(xBox.getRawAxis(2) > .1){//If the left trigger is pressed
+			shooter.set(-1);//Start spinning the shooter
+			ourRobot.arcadeDrive(-1*xBox.getRawAxis(1),-1.3*xBox.getRawAxis(0));//Move the bot backwards but also allow it to turn
+		}
+    	else if(Math.abs(xBox.getRawAxis(1)) > .1 || Math.abs(xBox.getRawAxis(0)) > 0.05){//If none of these buttons are pressed
+    		ourRobot.arcadeDrive(-1*xBox.getRawAxis(1),-1.3*xBox.getRawAxis(0));//Control the bot with the left stick
+    		shooter.set(0);//Stop the shooter
+    	}
+    	else{//If no buttons are pressed and the left stick is not being moved
+    		ourRobot.arcadeDrive(0,0);//Stop the bot
+    		shooter.set(0);//Stop the shooter
+    	}
+    	
+    	//Shooting procedure and roller speed
+    	if(shooterSwitch.get()){//If shooter photositch is detecting the ball
+    		if(shooter.getEncVelocity() > 25000 && xBox.getRawAxis(3) > .1){//If the right trigger is pressed and the shooter is spinning at/past target speed
+    			roller.set(-1);//Spin the roller to push the ball into the shooter
+    		}
+    		else if(xBox.getRawAxis(2) > .1 && xBox.getRawAxis(3) < .1){//If either the trigger is not pressed or the shooter is not spinning fast enough
+    			roller.set(.45);//The roller moves the boulder away from the shooter slowly
+    		}
+    		else if(xBox.getRawButton(2)){//If the right trigger is not pressed but the B button is pressed
+    			roller.set(1);//Spin the roller outward (low goal/eject)
+    		}
+    		else{//Otherwise stop the roller
+    			roller.set(0);
+    		}
+    	}
+    	else{//If shooter photositch is not detecting the ball
+    		if(xBox.getRawAxis(3)>.1){//If the right trigger is pressed
+    			roller.set(-1);//Spin the roller inward
+    		}
+    		else if(xBox.getRawButton(2)){//If the right trigger is not pressed but the B button is pressed
+    			roller.set(1);//Spin the roller outward (low goal/eject)
+    		}
+    		else if(xBox.getRawAxis(3) > .1 && xBox.getRawAxis(2) > .1 && shooter.getEncVelocity()>25000){//If ready to shoot
+    			roller.set(-1);//Move roller inward
+    		}
+    		else if(xBox.getRawAxis(2) > .1){//If neither the right trigger nor B button are pressed but the left trigger is
+    			roller.set(0);//Stop spinning roller
+    		}
+    		else{//Otherwise stop the roller
+    			roller.set(0);
+    		}
+    	}
+   
+
+    	//Portcullis arm
+    	if(saitek.getRawButton(3)){//If saitek button 3 is pressed
+    		portArm.set(-1*saitek.getRawAxis(1));//The portcullis arm is control by saitek axis 1
+    	}
+    	else{//Otherwise stop it
+    		portArm.set(0);
+    	}
+    
+    	//Winch
+    	//Standard control
+    	if(Math.abs(xBox.getRawAxis(5)) > .1 && winchEncoder.get() >= minHeight){//If right stick is outside dead zone and the encoder is above its minimum value
+    		winch.set(xBox.getRawAxis(5));//Set the winch to the value of the right stick
+    	}
+    	else if(xBox.getRawAxis(5) > .1 && winchEncoder.get() < minHeight){//If the encoder value is less than the minimum height
+    	    	winch.set(xBox.getRawAxis(5));//Only move the winch if the intended direction is up
+    	}
+    	else{//Otherwise stop the winch
+    		winch.set(0);
+    	}
+    	//Winch setpositions/setpoints
+    		//Main premise: if the encoder value is greater than 400 counts away from set position,
+    		//move the winch quickly, if it is between 400 and 100 away, slow it down,
+    		//if it is within 100 counts, stop the winch
+    	//Y button sets to starting position
+    	if (xBox.getRawButton(4)){
+    		if(winchEncoder.get() <= starting -100 && winchEncoder.get() > starting -400){
+    			winch.set(-.35);
+    		}
+    		if(winchEncoder.get() <= starting -400){
+    			winch.set(-.7);
+    		}	
+    		if(winchEncoder.get() >= starting +400){
+    			winch.set(.65);
+    		}
+    		if(winchEncoder.get() >= starting +100 && winchEncoder.get() < starting +400){
+    			winch.set(.35);
+    		}
+    	}
+    	//Right bumper sets to defense height (same as Autonomous height)
+    	if (xBox.getRawButton(6)){
+    		if(winchEncoder.get() <= defenseHeight -100 && winchEncoder.get() > defenseHeight -400){
+    			winch.set(-.35);
+    		}
+    		if(winchEncoder.get() <= defenseHeight -400){
+    			winch.set(-.7);
+    		}	
+    		if(winchEncoder.get() >= defenseHeight +400){
+    			winch.set(.7);
+    		}
+    		if(winchEncoder.get() >= defenseHeight +100 && winchEncoder.get() < defenseHeight +400){
+    			winch.set(.35);
+    		}
+    	}
+       	//X button sets to shooting position
+    	if (xBox.getRawButton(3)){
+    		if(winchEncoder.get() <= shooting -100 && winchEncoder.get() > shooting -400){
+    			winch.set(-.35);
+    		}
+    		if(winchEncoder.get() <= shooting -250){
+    			winch.set(-.7);
+    		}	
+    		if(winchEncoder.get() >= shooting +250){
+    			winch.set(.7);
+    		}
+    		if(winchEncoder.get() >= shooting +100 && winchEncoder.get()  < shooting +400){
+    			winch.set(.35);
+    		}
+    	}
+       	//A button sets to horizontal position
+    	if (xBox.getRawButton(1)){
+    		if(winchEncoder.get() <= horizontal-100 && winchEncoder.get() > horizontal-400){
+    			winch.set(-.35);
+    		}
+    		if(winchEncoder.get() <= horizontal-400){
+    			winch.set(-.65);
+    		}	
+    		if(winchEncoder.get() >= horizontal+400){
+    			winch.set(.8);
+    		}
+    		if(winchEncoder.get() >= horizontal+100 && winchEncoder.get() < horizontal+400){
+    			winch.set(.35);
+    		}
+    	}
+    	
+    	//Calibration/Zeroing
+    	if(xBox.getRawButton(5)){//Left bumper resets encoder values
+    		winchEncoder.reset();
+    		leftWheel.reset();
+    		rightWheel.reset();
+    	}
+
+    	//Printing values to the smart dashboard
+    	SmartDashboard.putNumber("Winch",winchEncoder.get());
+    	SmartDashboard.putNumber("ShooterSpeed",shooter.getEncVelocity());
+    	SmartDashboard.putNumber("Left wheel is: ",leftWheel.get());
+    	SmartDashboard.putNumber("Right wheel is: ",rightWheel.get());
+    	
+    	Timer.delay(.04);// wait 40ms to avoid hogging CPU cycles
+    	
+    }
+    
+    /**
+     * This function is called periodically during test mode
+     */
+    
+    public void testPeriodic() {
+    }
+    
+}
+
