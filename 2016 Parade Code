@@ -7,7 +7,6 @@ import edu.wpi.first.wpilibj.Jaguar;
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.Relay;//Spike
 import edu.wpi.first.wpilibj.RobotDrive;
-import edu.wpi.first.wpilibj.Talon;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 //PARADE CODE
@@ -23,13 +22,11 @@ public class Robot extends IterativeRobot {
 	//For CAN, the Talon for the roller has an ID of 1,
 	//whereas the Talon for theshooter has and ID of 0
 	
-	Talon portArm;//Defining motor controllers
 	CANTalon roller;
 	CANTalon shooter;
 	Jaguar winch;
 	RobotDrive ourRobot;
 	Joystick xBox;//Joysticks
-	Joystick saitek;
 	Encoder winchEncoder;//Encoders
 	Encoder shooterEncoder;
 	Encoder leftWheel, rightWheel;
@@ -50,7 +47,6 @@ public class Robot extends IterativeRobot {
     public void robotInit() {
     	ourRobot = new RobotDrive(0,1);//Drive Train PWM ports are 0 and 1
     	xBox = new Joystick(0);//Xbox controller has an ID of 0 on the driver station
-    	saitek = new Joystick(2);//The saitek has an ID of 2
     	winch = new Jaguar(2);//The winch's jaguar is plugged into PWM port 2
     	roller = new CANTalon(1);//The roller's Talon SRX has a common ID of 1
     	shooter = new CANTalon(0);//The shooter's Talon SRX has a common ID of 0
@@ -63,7 +59,6 @@ public class Robot extends IterativeRobot {
     	leftWheel.reset();//Resets both drive train encoders
     	rightWheel.reset();
     	spike = new Relay(0);//The spike is plugged into relay port 0
-    	portArm = new Talon(6);//The portcullis arm's talon is plugged into PWM port 6
     	spike.set(Relay.Value.kForward);//Sets the spike to on in the positive direction
     }
     
@@ -186,15 +181,6 @@ public class Robot extends IterativeRobot {
     		else{//Otherwise stop the roller
     			roller.set(0);
     		}
-    	}
-   
-
-    	//Portcullis arm
-    	if(saitek.getRawButton(3)){//If saitek button 3 is pressed
-    		portArm.set(-1*saitek.getRawAxis(1));//The portcullis arm is control by saitek axis 1
-    	}
-    	else{//Otherwise stop it
-    		portArm.set(0);
     	}
     
     	//Winch
