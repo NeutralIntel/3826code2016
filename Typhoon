@@ -10,7 +10,7 @@ import edu.wpi.first.wpilibj.Relay;//Spike
 import edu.wpi.first.wpilibj.RobotDrive;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-
+//Typhoon code
 /**
  * The VM is configured to automatically run this class, and to call the
  * functions corresponding to each mode, as described in the IterativeRobot
@@ -29,7 +29,6 @@ public class Robot extends IterativeRobot {
 	Jaguar winch;
 	RobotDrive ourRobot;
 	Joystick xBox;//Joysticks
-	Joystick saitek;
 	Encoder winchEncoder;//Encoders
 	Encoder shooterEncoder;
 	Encoder leftWheel, rightWheel;
@@ -51,7 +50,6 @@ public class Robot extends IterativeRobot {
     public void robotInit() {
     	ourRobot = new RobotDrive(0,1);//Drive Train PWM ports are 0 and 1
     	xBox = new Joystick(0);//Xbox controller has an ID of 0 on the driver station
-    	saitek = new Joystick(2);//The saitek has an ID of 2
     	winch = new Jaguar(2);//The winch's jaguar is plugged into PWM port 2
     	roller = new CANTalon(1);//The roller's Talon SRX has a common ID of 1
     	shooter = new CANTalon(0);//The shooter's Talon SRX has a common ID of 0
