@@ -5,13 +5,13 @@
 /* the project.                                                               */
 /*----------------------------------------------------------------------------*/
 
-package org.usfirst.frc.team3826.robot;
+package edu.wpi.first.wpilibj.templates;
 
 
 import edu.wpi.first.wpilibj.Compressor;
 import edu.wpi.first.wpilibj.DoubleSolenoid;
 import edu.wpi.first.wpilibj.Jaguar;
-import edu.wpi.first.wpilibj.IterativeRobot;
+import edu.wpi.first.wpilibj.SimpleRobot;
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.RobotDrive;
 import edu.wpi.first.wpilibj.Timer;
@@ -24,7 +24,7 @@ import edu.wpi.first.wpilibj.Relay;
  * creating this project, you must also update the manifest file in the resource
  * directory.
  */
-public class Robot extends IterativeRobot {
+public class RobotTemplate extends SimpleRobot {
     /**
      * This function is called once each time the robot enters autonomous mode.
      */
@@ -39,10 +39,11 @@ public class Robot extends IterativeRobot {
     Jaguar topWheels = new Jaguar(5);
     Jaguar armMotor = new Jaguar(6);
     DoubleSolenoid launcherSol = new DoubleSolenoid(1, 2);
-    Compressor compOne = new Compressor(1);
+    Compressor compOne = new Compressor(1, 1);
     Relay fanAndCamera = new Relay(2, Relay.Direction.kForward);
     static int count = 0;
     static double topSpin, armSpin;
+    double mov, rot;
     
     public void autonomous() {
         
@@ -52,14 +53,28 @@ public class Robot extends IterativeRobot {
      * This function is called once each time the robot enters operator control.
      */
     public void operatorControl() {
-        chassis.setSafetyEnabled(true);
+        //chassis.setSafetyEnabled(true);
         topWheels.enableDeadbandElimination(true);
         armMotor.enableDeadbandElimination(true);
         compOne.start();
         //fanAndCamera.set(Relay.Value.kReverse);
         //fanAndCamera.set(Relay.Value.kForward);
         while (isOperatorControl() && isEnabled()) {
-            chassis.arcadeDrive(controlStick);
+            if(Math.abs(controlStick.getRawAxis(1)) > .1){
+                mov = controlStick.getRawAxis(1);
+            }
+            else{
+                mov = 0;
+            }
+            if(Math.abs(controlStick.getRawAxis(2)) > .1){
+                rot = controlStick.getRawAxis(2);
+            }
+            else{
+                rot = 0;
+            }
+            chassis.arcadeDrive(rot, -mov);
+            System.out.println("Axis 1:" + controlStick.getRawAxis(1));
+            System.out.println("Axis 2:" + controlStick.getRawAxis(2));
             /* if (controlStick.getRawButton(9)) {
                 if (topSpin > -1) {
                     topSpin -= .05;
@@ -75,17 +90,17 @@ public class Robot extends IterativeRobot {
             topSpin = 0;
         }
             */
-            if (Math.abs(controlStick.getRawAxis(3))>.2) {
-                topSpin = -Math.abs(controlStick.getRawAxis(3));
+            if (controlStick.getRawButton(5)) {
+                topSpin = -1;
             } else {
                 topSpin = 0;
             }
-            if (Math.abs(controlStick.getRawAxis(6)) < .2) {
+            if (Math.abs(controlStick.getRawAxis(5)) < .2) {
                 armSpin = 0;
             } else {
-                armSpin = -controlStick.getRawAxis(6);
+                armSpin = -controlStick.getRawAxis(5);
             }
-            if (controlStick.getRawAxis(4)>.5) {
+            if (controlStick.getRawButton(6)) {
                 launcherSol.set(DoubleSolenoid.Value.kForward);
                 count = 0;
             } else {
@@ -107,3 +122,4 @@ public class Robot extends IterativeRobot {
     
     //}
 //}
+
